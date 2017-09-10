@@ -5,20 +5,34 @@ import java.nio.file.Path
 
 class ResourceLoader {
 
-    private static File load(String resourceName, String destination, Map<String, String> arguments) {
-        def resourceContent = ClassLoader.getResourceAsStream(resourceName).text
-        arguments.forEach({ key, value -> resourceContent = resourceContent.replaceAll("%$key%", value) })
+    private final static String DOCKERFILE =
+            'FROM java:%JAVA_VERSION%\n' +
+            'COPY %JAR_PATH% /app.jar\n' +
+            'COPY startup.sh /startup.sh\n' +
+            'CMD ["/bin/sh", "startup.sh"]\n'
+
+    private final static String BUILD_DOCKER =
+            '#!/bin/sh\n'+
+            'docker build . -t %IMAGE_NAME%:%IMAGE_VERSION%\n'
+
+    private final static String STARTUP =
+            '#!/bin/sh\n'+
+            'java %VM_MEM% %DEBUG% -jar %VM_ARGS% /app.jar %APP_ARGS%\n'
+
+
+    private static File load(String resource, String destination, Map<String, String> arguments) {
+        arguments.forEach({ key, value -> resource = resource.replaceAll("%$key%", value) })
         def file = new File(destination)
-        file.write(resourceContent)
+        file.write(resource)
         return file
     }
 
     static File createDockerfile(PluginContext context, Path jarPath) {
         def arguments = [
                 JAVA_VERSION: context.javaDockerVersion,
-                JAR_PATH    : jarPath.text
+                JAR_PATH    : jarPath.toString()
         ]
-        return load('Dockerfile', 'Dockerfile', arguments);
+        return load(DOCKERFILE, 'Dockerfile', arguments);
     }
 
     static File createStartupSh(PluginContext context) {
@@ -28,7 +42,7 @@ class ResourceLoader {
                 VM_ARGS : context.vmArgs,
                 APP_ARGS: context.appArgs
         ]
-        def file = load('startup.sh', 'startup.sh', arguments);
+        def file = load(STARTUP, 'startup.sh', arguments);
         file.setExecutable(true)
         return file
     }
@@ -38,7 +52,7 @@ class ResourceLoader {
                 IMAGE_NAME   : context.imageName,
                 IMAGE_VERSION: context.imageVersion
         ]
-        def file = load('build-docker.sh', 'build-docker.sh', arguments)
+        def file = load(BUILD_DOCKER, 'build-docker.sh', arguments)
         file.setExecutable(true)
         return file
     }
@@ -48,7 +62,7 @@ class ResourceLoader {
     }
 
     static void cleanFiles() {
-        ['Dockerfile', 'startup.sh', 'build-docker.sh']
+        ['Dockerfile', 'startup.sh', 'build-docker.sh', 'app.jar']
                 .collect { new File(it) }
                 .findAll { it.exists() }
                 .forEach({ it.delete() })

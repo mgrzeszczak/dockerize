@@ -3,7 +3,9 @@ package github.com.mgrzeszczak.dockerize
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 
 class DockerizePlugin implements Plugin<Project> {
 
@@ -34,7 +36,8 @@ class DockerizePlugin implements Plugin<Project> {
 
     private static void buildDockerImage(Project project, File buildDocker) {
         project.exec {
-            commandLine "./${buildDocker.name}"
+            commandLine "./build-docker.sh"
+            workingDir "."
         }
     }
 
@@ -46,7 +49,10 @@ class DockerizePlugin implements Plugin<Project> {
         Arguments.check(files.size() == 1, "more than one jar files found in $libDir.path")
 
         def jarFile = new File(libDir, files[0])
-        return new File('.').toPath().relativize(jarFile.toPath())
+
+        def path = Paths.get('app.jar')
+        Files.copy(jarFile.toPath(), path)
+        return path
     }
 
 }
