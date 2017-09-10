@@ -19,7 +19,7 @@ dockerBuild {
      javaDockerVersion = '8-jre-alpine'
 }
 ```
-
+Now run 'dockerize' task `gradle dockerize` to create your docker image.
 
 # License
 ```
