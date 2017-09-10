@@ -4,8 +4,6 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 
 class DockerizePlugin implements Plugin<Project> {
 
@@ -16,32 +14,34 @@ class DockerizePlugin implements Plugin<Project> {
             doFirst {
                 PluginContext context = project.dockerBuild
                 context.initialize(project)
+                File root = project.rootDir
                 try {
-                    ResourceLoader.cleanFiles()
+                    ResourceLoader.cleanFiles(root)
                     dockerizeProject(project, context)
                 } finally {
-                    ResourceLoader.cleanFiles()
+                    ResourceLoader.cleanFiles(root)
                 }
             }
         }
     }
 
     private static void dockerizeProject(Project project, PluginContext context) {
-        def jarPath = findJarPath(project.buildDir)
-        def dockerfile = ResourceLoader.createDockerfile(context, jarPath)
-        def startup = ResourceLoader.createStartupSh(context)
-        def buildDocker = ResourceLoader.createBuildDockerSh(context)
-        buildDockerImage(project, buildDocker)
+        def root = project.rootDir
+        copyJar(project.buildDir, root)
+        def dockerfile = ResourceLoader.createDockerfile(root, context)
+        def startup = ResourceLoader.createStartupSh(root, context)
+        def buildDocker = ResourceLoader.createBuildDockerSh(root, context)
+        buildDockerImage(project)
     }
 
-    private static void buildDockerImage(Project project, File buildDocker) {
+    private static void buildDockerImage(Project project) {
         project.exec {
             commandLine "./build-docker.sh"
-            workingDir "."
+            workingDir project.rootDir
         }
     }
 
-    private static Path findJarPath(File buildDir) {
+    private static void copyJar(File buildDir, File rootDir) {
         File libDir = new File(buildDir, 'libs')
         Arguments.check(libDir.exists(), "$libDir.path does not exist (did you build the project?)")
         def files = libDir.list().findAll { it.matches('.*\\.jar') }
@@ -50,9 +50,8 @@ class DockerizePlugin implements Plugin<Project> {
 
         def jarFile = new File(libDir, files[0])
 
-        def path = Paths.get('app.jar')
+        def path = new File(rootDir, 'app.jar').toPath()
         Files.copy(jarFile.toPath(), path)
-        return path
     }
 
 }

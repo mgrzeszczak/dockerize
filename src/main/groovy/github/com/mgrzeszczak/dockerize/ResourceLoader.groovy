@@ -1,8 +1,5 @@
 package github.com.mgrzeszczak.dockerize
 
-import java.nio.file.Path
-
-
 class ResourceLoader {
 
     private final static String DOCKERFILE =
@@ -20,39 +17,38 @@ class ResourceLoader {
             'java %VM_MEM% %DEBUG% -jar %VM_ARGS% /app.jar %APP_ARGS%\n'
 
 
-    private static File load(String resource, String destination, Map<String, String> arguments) {
+    private static File load(String resource, File destination, Map<String, String> arguments) {
         arguments.forEach({ key, value -> resource = resource.replaceAll("%$key%", value) })
-        def file = new File(destination)
-        file.write(resource)
-        return file
+        destination.write(resource)
+        return destination
     }
 
-    static File createDockerfile(PluginContext context, Path jarPath) {
+    static File createDockerfile(File rootDir, PluginContext context) {
         def arguments = [
                 JAVA_VERSION: context.javaDockerVersion,
-                JAR_PATH    : jarPath.toString()
+                JAR_PATH    : 'app.jar'
         ]
-        return load(DOCKERFILE, 'Dockerfile', arguments);
+        return load(DOCKERFILE, new File(rootDir, 'Dockerfile'), arguments)
     }
 
-    static File createStartupSh(PluginContext context) {
+    static File createStartupSh(File rootDir, PluginContext context) {
         def arguments = [
                 VM_MEM  : context.vmMem,
                 DEBUG   : context.debug ? getDebugArgument(context.debugPort) : '',
                 VM_ARGS : context.vmArgs,
                 APP_ARGS: context.appArgs
         ]
-        def file = load(STARTUP, 'startup.sh', arguments);
+        def file = load(STARTUP, new File(rootDir, 'startup.sh'), arguments)
         file.setExecutable(true)
         return file
     }
 
-    static File createBuildDockerSh(PluginContext context) {
+    static File createBuildDockerSh(File rootDir, PluginContext context) {
         def arguments = [
                 IMAGE_NAME   : context.imageName,
                 IMAGE_VERSION: context.imageVersion
         ]
-        def file = load(BUILD_DOCKER, 'build-docker.sh', arguments)
+        def file = load(BUILD_DOCKER, new File(rootDir, 'build-docker.sh'), arguments)
         file.setExecutable(true)
         return file
     }
@@ -61,9 +57,9 @@ class ResourceLoader {
         return "-agentlib:jdwp=transport=dt_socket,address=$port,server=y,suspend=y"
     }
 
-    static void cleanFiles() {
+    static void cleanFiles(File rootDir) {
         ['Dockerfile', 'startup.sh', 'build-docker.sh', 'app.jar']
-                .collect { new File(it) }
+                .collect { new File(rootDir, it) }
                 .findAll { it.exists() }
                 .forEach({ it.delete() })
     }
