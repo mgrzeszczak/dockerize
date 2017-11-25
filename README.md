@@ -9,6 +9,7 @@ In projects __build.gradle__ add configuration (every parameter is optional):
 
 ```
 dockerBuild {
+     jarNamePattern = '.*\\.jar' // only this jar will be copied to docker image and run on start
      imageName = ''  // defaults to project.name
      imageVersion ='' // defaults to project.version
      vmMem = '-Xmx1024m -Xms256m'
