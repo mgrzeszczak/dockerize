@@ -27,7 +27,7 @@ class DockerizePlugin implements Plugin<Project> {
 
     private static void dockerizeProject(Project project, PluginContext context) {
         def root = project.rootDir
-        copyJar(project.buildDir, root)
+        copyJar(project.buildDir, root, context.jarNamePattern)
         def dockerfile = ResourceLoader.createDockerfile(root, context)
         def startup = ResourceLoader.createStartupSh(root, context)
         def buildDocker = ResourceLoader.createBuildDockerSh(root, context)
@@ -41,12 +41,12 @@ class DockerizePlugin implements Plugin<Project> {
         }
     }
 
-    private static void copyJar(File buildDir, File rootDir) {
+    private static void copyJar(File buildDir, File rootDir, String jarNamePattern) {
         File libDir = new File(buildDir, 'libs')
         Arguments.check(libDir.exists(), "$libDir.path does not exist (did you build the project?)")
-        def files = libDir.list().findAll { it.matches('.*\\.jar') }
-        Arguments.check(files.size() != 0, "no jar files found in $libDir.path (did you build the project?)")
-        Arguments.check(files.size() == 1, "more than one jar files found in $libDir.path")
+        def files = libDir.list().findAll { it.matches(jarNamePattern) }
+        Arguments.check(files.size() != 0, "no jar files matching pattern $jarNamePattern found in $libDir.path (did you build the project?)")
+        Arguments.check(files.size() == 1, "more than one jar file found matching pattern $jarNamePattern in $libDir.path")
 
         def jarFile = new File(libDir, files[0])
 

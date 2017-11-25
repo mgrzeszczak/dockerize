@@ -5,6 +5,7 @@ import org.gradle.api.Project
 
 class PluginContext {
 
+    String jarNamePattern = ".*\\.jar"
     String imageName
     String imageVersion
     String vmMem = '-Xmx1024m -Xms256m'
